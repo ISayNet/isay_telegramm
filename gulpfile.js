@@ -36,6 +36,36 @@ gulp.task('usemin-index', function () {
     .pipe(gulp.dest('dist'))
 })
 
+gulp.task('usemin-auth', function () {
+  return gulp.src('app/auth.html')
+    .pipe($.usemin({
+      html: [$.minifyHtml({empty: true})],
+      js: ['concat', $.ngAnnotate(), $.uglify({outSourceMap: false})],
+      css: ['concat', $.minifyCss({compatibility: true, keepBreaks: true})]
+    }))
+    .pipe(gulp.dest('dist'))
+})
+
+gulp.task('usemin-auth', function () {
+  return gulp.src('app/auth.html')
+    .pipe($.usemin({
+      html: [$.minifyHtml({empty: true})],
+      js: ['concat', $.ngAnnotate(), $.uglify({outSourceMap: false})],
+      css: ['concat', $.minifyCss({compatibility: true, keepBreaks: true})]
+    }))
+    .pipe(gulp.dest('dist'))
+})
+
+gulp.task('usemin-getgrant', function () {
+  return gulp.src('app/getgrant.html')
+    .pipe($.usemin({
+      html: [$.minifyHtml({empty: true})],
+      js: ['concat', $.ngAnnotate(), $.uglify({outSourceMap: false})],
+      css: ['concat', $.minifyCss({compatibility: true, keepBreaks: true})]
+    }))
+    .pipe(gulp.dest('dist'))
+})
+
 gulp.task('usemin-badbrowser', function () {
   return gulp.src('app/badbrowser.html')
     .pipe($.usemin({
@@ -312,6 +342,8 @@ gulp.task('build', ['clean'], function (callback) {
     'enable-production',
     'usemin-index',
     'usemin-badbrowser',
+    'usemin-auth',
+    'usemin-getgrant',
     ['copy', 'copy-locales', 'copy-images', 'disable-production'],
     'clean-templates',
     callback

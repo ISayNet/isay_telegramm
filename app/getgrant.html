@@ -1,0 +1,19 @@
+<form id='dataformid' name="grform" action="getgrants" method="post" >
+<input type='hidden' name='data' id='datajs' />
+<input type='hidden' name='ptoken' id='ptokenid' value="" />
+</form>
+
+<!-- build:js js/grants.js -->
+<script src="js/isay/conf.js"></script>
+<!-- endbuild -->
+
+<script type="text/javascript">
+
+document.getElementById('datajs').value = JSON.stringify(serviceinfo);
+document.getElementById('ptokenid').value = ptoken;
+document.getElementById('dataformid').action = oauthserver+"getgrants";
+
+window.onload = function() {
+document.grform.submit();
+}
+</script>

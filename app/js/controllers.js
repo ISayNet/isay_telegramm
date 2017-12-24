@@ -48,7 +48,19 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       }
       TelegramMeWebService.setAuthorized(false)
       WebPushApiManager.forceUnsubscribe()
-    })
+    });
+    isay_telegram_get_phone(function (isay_code,isay_telephone) 
+    {
+    $scope.credentials.phone_country=isay_code;
+    $scope.credentials.phone_number=isay_telephone;
+    $scope.sendCode();
+    },
+    function() 
+    {
+    
+    }
+    );
+ 
 
     var options = {dcID: 2, createNetworker: true}
     var countryChanged = false
@@ -162,6 +174,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     var updatePasswordTimeout = false
 
     function saveAuth (result) {
+      isay_telegram_set_phone($scope.credentials.phone_country,$scope.credentials.phone_number, result.user.id)
       MtpApiManager.setUserAuth(options.dcID, {
         id: result.user.id
       })
@@ -236,7 +249,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         })
       })
     }
-
+    
     function applySentCode (sentCode) {
       $scope.credentials.type = sentCode.type
       $scope.nextPending.type = sentCode.next_type || false
