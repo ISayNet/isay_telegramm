@@ -20,7 +20,7 @@ Config = window.Config || {}
 Config.App = {
   id: 193078,
   hash: '63bb11e509f31229516eaa8f345ab9a0',
-  version: '0.6.0',
+  version: '0.7.0',
   domains: ['telegram.isaynet.ru']
 }
 
