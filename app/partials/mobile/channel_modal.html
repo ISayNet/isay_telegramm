@@ -53,9 +53,14 @@
 
       <div class="mobile_user_modal_info_wrap clearfix">
         <h4 class="mobile_user_modal_header" my-peer-link="-chatFull.chat.id"></h4>
-        <p class="mobile_user_modal_status"  ng-if="chatFull.participants_count > 0">
-          <ng-pluralize count="chatFull.participants_count"
+        <p class="mobile_user_modal_status"  ng-if="chatFull.participants_count > 0" ng-switch="isMegagroup">
+          <ng-pluralize ng-switch-when="true"
+                        count="chatFull.participants_count"
                         when="group_modal_pluralize_participants">
+          </ng-pluralize>
+          <ng-pluralize ng-switch-default
+                        count="chatFull.participants_count"
+                        when="group_modal_pluralize_subscribers">
           </ng-pluralize>
         </p>
       </div>
@@ -112,7 +117,11 @@
       </a>
     </div>
 
-    <div class="mobile_modal_action_wrap" ng-if="!chatFull.chat.pFlags.creator && !chatFull.chat.pFlags.left && !chatFull.chat.pFlags.kicked && !isMegagroup">
+    <div class="mobile_modal_action_wrap" ng-if="isMegagroup && !chatFull.chat.username && !chatFull.chat.pFlags.left && !chatFull.chat.pFlags.kicked">
+      <a class="mobile_modal_action" ng-click="flushHistory()" my-i18n="group_modal_menu_clear_history"></a>
+    </div>
+
+    <div class="mobile_modal_action_wrap" ng-if="!chatFull.chat.pFlags.left && !chatFull.chat.pFlags.kicked && !isMegagroup">
       <a class="mobile_modal_action" ng-click="leaveChannel()" my-i18n="channel_modal_leave_channel"></a>
     </div>
 
@@ -123,13 +132,13 @@
       </a>
     </div>
 
-    <div class="mobile_modal_section" ng-if="chatFull.participants.participants.length > 0">
+    <div class="mobile_modal_section" ng-if="participants.length > 0">
       <h4 class="mobile_modal_section_header" my-i18n="group_modal_members"></h4>
       <div class="mobile_modal_section_body">
 
         <div class="chat_modal_members_list">
 
-          <div class="chat_modal_participant_wrap clearfix" ng-repeat="participant in chatFull.participants.participants | orderBy:'-user.sortStatus'">
+          <div class="chat_modal_participant_wrap clearfix" ng-repeat="participant in participants | orderBy:'-user.sortStatus'">
 
             <a ng-if="participant.canLeave" ng-click="leaveChannel()" class="chat_modal_participant_kick pull-right" my-i18n="group_modal_menu_leave"></a>
             <a ng-if="participant.canKick" ng-click="kickFromChannel(participant.user_id)" class="chat_modal_participant_kick pull-right" my-i18n="group_modal_members_kick"></a>

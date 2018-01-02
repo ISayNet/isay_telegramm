@@ -1,5 +1,5 @@
 /*!
- * Webogram v0.6.0 - messaging web application for MTProto
+ * Webogram v0.7 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
@@ -113,6 +113,19 @@ angular.module('myApp.services')
         return {
           dialogs: curDialogStorage.dialogs.slice(offset, offset + limit)
         }
+      })
+    }
+
+    function getConversation(peerID) {
+      var foundDialog = getDialogByPeerID(peerID)
+      if (foundDialog.length) {
+        return $q.when(foundDialog[0])
+      }
+      return $q.when({
+        peerID: peerID,
+        top_message: 0,
+        index: generateDialogIndex(generateDialogPinnedDate()),
+        pFlags: {}
       })
     }
 
@@ -808,6 +821,19 @@ angular.module('myApp.services')
               neededDocType = 'round'
               break
 
+            case 'inputMessagesFilterMusic':
+              neededContents['messageMediaDocument'] = true
+              neededDocType = 'audio'
+              break
+
+            case 'inputMessagesFilterUrl':
+              neededContents['url'] = true
+              break
+
+            case 'inputMessagesFilterMyMentions':
+              neededContents['mentioned'] = true
+              break
+
             default:
               return $q.when({
                 count: 0,
@@ -867,7 +893,10 @@ angular.module('myApp.services')
           min_date: 0,
           max_date: 0,
           limit: limit || 20,
-          max_id: AppMessagesIDsManager.getMessageLocalID(maxID) || 0
+          offset_id: AppMessagesIDsManager.getMessageLocalID(maxID) || 0,
+          add_offset: 0,
+          max_id: 0,
+          min_id: 0
         }, {
           timeout: 300,
           noErrorBox: true
@@ -1221,19 +1250,40 @@ angular.module('myApp.services')
     }
 
     function readMessages (messageIDs) {
-      MtpApiManager.invokeApi('messages.readMessageContents', {
-        id: messageIDs
-      }).then(function (affectedMessages) {
-        ApiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateReadMessagesContents',
-            messages: messageIDs,
-            pts: affectedMessages.pts,
-            pts_count: affectedMessages.pts_count
-          }
-        })
+      var splitted = AppMessagesIDsManager.splitMessageIDsByChannels(messageIDs)
+      angular.forEach(splitted.msgIDs, function (msgIDs, channelID) {
+        if (channelID > 0) {
+          MtpApiManager.invokeApi('channels.readMessageContents', {
+            channel: AppChatsManager.getChannelInput(channelID),
+            id: msgIDs
+          }).then(function () {
+            ApiUpdatesManager.processUpdateMessage({
+              _: 'updateShort',
+              update: {
+                _: 'updateChannelReadMessagesContents',
+                channel_id: channelID,
+                messages: msgIDs
+              }
+            })
+          })
+        } else {
+          MtpApiManager.invokeApi('messages.readMessageContents', {
+            id: msgIDs
+          }).then(function (affectedMessages) {
+            ApiUpdatesManager.processUpdateMessage({
+              _: 'updateShort',
+              update: {
+                _: 'updateReadMessagesContents',
+                messages: msgIDs,
+                pts: affectedMessages.pts,
+                pts_count: affectedMessages.pts_count
+              }
+            })
+          })
+        }
       })
+
+
     }
 
     function doFlushHistory (inputPeer, justClear) {
@@ -1262,6 +1312,26 @@ angular.module('myApp.services')
     }
 
     function flushHistory (peerID, justClear) {
+      if (AppPeersManager.isChannel(peerID)) {
+        return getHistory(peerID, false, 1).then(function (historyResult) {
+          var channelID = -peerID
+          var maxID = AppMessagesIDsManager.getMessageLocalID(historyResult.history[0] || 0)
+          return MtpApiManager.invokeApi('channels.deleteHistory', {
+            channel: AppChatsManager.getChannelInput(channelID),
+            max_id: maxID
+          }).then(function () {
+            ApiUpdatesManager.processUpdateMessage({
+              _: 'updateShort',
+              update: {
+                _: 'updateChannelAvailableMessages',
+                channel_id: channelID,
+                available_min_id: maxID
+              }
+            })
+            return true
+          })
+        })
+      }
       return doFlushHistory(AppPeersManager.getInputPeerByID(peerID), justClear).then(function () {
         if (justClear) {
           $rootScope.$broadcast('dialog_flush', {peerID: peerID})
@@ -1319,16 +1389,24 @@ angular.module('myApp.services')
 
         apiMessage.date -= ServerTimeManager.serverTimeOffset
 
-        var fwdHeader = apiMessage.fwd_from
-        if (fwdHeader) {
-          apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id
-          fwdHeader.date -= ServerTimeManager.serverTimeOffset
-        }
-
         apiMessage.peerID = peerID
         apiMessage.fromID = apiMessage.pFlags.post ? peerID : apiMessage.from_id
-        apiMessage.signID = apiMessage.pFlags.post && apiMessage.from_id ||
-          fwdHeader && fwdHeader.channel_id && fwdHeader.from_id
+
+        var fwdHeader = apiMessage.fwd_from
+        if (fwdHeader) {
+          if (peerID == AppUsersManager.getSelf().id) {
+            if (fwdHeader.saved_from_peer && fwdHeader.saved_from_msg_id) {
+              var savedFromPeerID = AppPeersManager.getPeerID(fwdHeader.saved_from_peer)
+              var savedFromMid = AppMessagesIDsManager.getFullMessageID(fwdHeader.saved_from_msg_id, AppPeersManager.isChannel(savedFromPeerID) ? -savedFromPeerID : 0)
+              apiMessage.savedFrom = savedFromPeerID + '_' + savedFromMid
+            }
+            apiMessage.fromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id
+          } else {
+            apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id
+            apiMessage.fwdPostID = fwdHeader.channel_post
+          }
+          fwdHeader.date -= ServerTimeManager.serverTimeOffset
+        }
 
         if (apiMessage.via_bot_id > 0) {
           apiMessage.viaBotID = apiMessage.via_bot_id
@@ -1345,10 +1423,18 @@ angular.module('myApp.services')
               delete apiMessage.media
               break
             case 'messageMediaPhoto':
-              AppPhotosManager.savePhoto(apiMessage.media.photo, mediaContext)
+              if (apiMessage.media.ttl_seconds) {
+                apiMessage.media = {_: 'messageMediaUnsupportedWeb'}
+              } else {
+                AppPhotosManager.savePhoto(apiMessage.media.photo, mediaContext)
+              }
               break
             case 'messageMediaDocument':
-              AppDocsManager.saveDoc(apiMessage.media.document, mediaContext)
+              if (apiMessage.media.ttl_seconds) {
+                apiMessage.media = {_: 'messageMediaUnsupportedWeb'}
+              } else {
+                AppDocsManager.saveDoc(apiMessage.media.document, mediaContext)
+              }
               break
             case 'messageMediaWebPage':
               AppWebPagesManager.saveWebPage(apiMessage.media.webpage, apiMessage.mid, mediaContext)
@@ -1358,7 +1444,10 @@ angular.module('myApp.services')
               apiMessage.media.handleMessage = true
               break
             case 'messageMediaInvoice':
-              apiMessage.media = {_: 'messageMediaUnsupported'}
+              apiMessage.media = {_: 'messageMediaUnsupportedWeb'}
+              break
+            case 'messageMediaGeoLive':
+              apiMessage.media._ = 'messageMediaGeo'
               break
           }
         }
@@ -1436,6 +1525,7 @@ angular.module('myApp.services')
                 )
               break
           }
+          
           if (migrateFrom &&
             migrateTo &&
             !migratedFromTo[migrateFrom] &&
@@ -2290,7 +2380,7 @@ angular.module('myApp.services')
             to_id: AppPeersManager.getOutputPeer(dialog.peerID),
             deleted: true,
             date: tsNow(true),
-            pFlags: {}
+            pFlags: {out: true}
           }
         } else {
           return message
@@ -2309,7 +2399,7 @@ angular.module('myApp.services')
       }
 
       if (message.message && message.message.length) {
-        message.richMessage = RichTextProcessor.wrapRichText(message.message.substr(0, 64), {noLinks: true, noLinebreaks: true})
+        message.richMessage = RichTextProcessor.wrapRichText(message.message.substr(0, 128), {noLinks: true, noLinebreaks: true})
       }
 
       message.dateText = dateOrTimeFilter(message.date)
@@ -2625,7 +2715,7 @@ angular.module('myApp.services')
         }
 
         if (curMessage.views &&
-          !incrementedMessageViews[curMessage.mid]) {
+            !incrementedMessageViews[curMessage.mid]) {
           incrementedMessageViews[curMessage.mid] = true
           needIncrementMessageViews.push(curMessage.mid)
           if (incrementMessageViewsTimeout === false) {
@@ -2633,14 +2723,14 @@ angular.module('myApp.services')
           }
         }
 
-        if (prevMessage &&
-          // !curMessage.views &&
-          prevMessage.fromID == curMessage.fromID &&
-          !prevMessage.fwdFromID == !curMessage.fwdFromID &&
-          prevMessage.viaBotID == curMessage.viaBotID &&
-          !prevMessage.action &&
-          !curMessage.action &&
-          curMessage.date < prevMessage.date + 900) {
+        if ((!AppPeersManager.isBroadcast(getMessagePeer(curMessage)) || curMessage.fwdFromID) &&
+            prevMessage &&
+            prevMessage.fromID == curMessage.fromID &&
+            !prevMessage.fwdFromID == !curMessage.fwdFromID &&
+            prevMessage.viaBotID == curMessage.viaBotID &&
+            !prevMessage.action &&
+            !curMessage.action &&
+            curMessage.date < prevMessage.date + 900) {
           var singleLine = curMessage.message && curMessage.message.length < 70 && curMessage.message.indexOf('\n') == -1 && !curMessage.reply_to_mid
           if (groupFwd &&
             curMessage.fwdFromID &&
@@ -3328,6 +3418,14 @@ angular.module('myApp.services')
           }
           break
 
+        case 'updateChannelReadMessagesContents':
+          var channelID = update.channel_id
+          var newMessages = []
+          angular.forEach(update.messages, function (msgID) {
+            newMessages.push(AppMessagesIDsManager.getFullMessageID(msgID, channelID))
+          })
+          update.messages = newMessages
+
         case 'updateReadMessagesContents':
           var messages = update.messages
           var len = messages.length
@@ -3344,6 +3442,21 @@ angular.module('myApp.services')
             }
           }
           break
+
+        case 'updateChannelAvailableMessages':
+          var channelID = update.channel_id
+          var messages = []
+          var peerID = -channelID
+          var history = (historiesStorage[peerID] || {}).history || []
+          if (history.length) {
+            angular.forEach(history, function (msgID) {
+              if (!update.available_min_id ||
+                  AppMessagesIDsManager.getMessageLocalID(msgID) <= update.available_min_id) {
+                messages.push(msgID)
+              }
+            })
+          }
+          update.messages = messages
 
         case 'updateDeleteMessages':
         case 'updateDeleteChannelMessages':
@@ -3659,6 +3772,7 @@ angular.module('myApp.services')
 
     return {
       getConversations: getConversations,
+      getConversation: getConversation,
       getHistory: getHistory,
       getSearch: getSearch,
       getMessage: getMessage,
