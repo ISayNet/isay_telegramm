@@ -206,6 +206,7 @@ var fileGlobs = [
   './dist/**/*',
   '!dist/manifest.*',
   '!dist/*.html',
+  '!dist/index.html',
   '!dist/fonts/*',
   '!dist/img/icons/icon*.png',
   '!dist/js/background.js',
@@ -222,7 +223,6 @@ function writeServiceWorkerFile (rootDir, handleFetch, callback) {
     importScripts: ['js/lib/push_worker.js'],
     verbose: true,
     maximumFileSizeToCacheInBytes: 3004152, // about 3MB, default is "2097152" 2MB,
-    navigateFallback: "index.html",
   }
   swPrecache.write(path.join(rootDir, 'service_worker.js'), config, callback)
 }

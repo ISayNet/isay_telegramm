@@ -1,7 +1,7 @@
 {
-  "name": "Telegram",
-  "description": "Telegram Web App.\nMore info & source code here: https://github.com/zhukov/webogram",
-  "short_name": "Telegram",
+  "name": "ISayNetTelegramClient",
+  "description": "ISayNet Telegram Client Web App.\nMore info & source code here: https://github.com/ISayNet/isay_telegramm",
+  "short_name": "ISayNetTelegram",
   "display": "standalone",
   "theme_color": "#497495",
   "gcm_sender_id": "122867383838",

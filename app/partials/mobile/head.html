@@ -12,6 +12,8 @@
           <span class="icon-bar"></span>
         </a>
         <ul ng-switch-when="true" class="dropdown-menu">
+          <li><a href="https://isaynet.ru" my-i18n="im_isay_main_page"></a></li>
+          <li><a href="https://isaynet.ru/friends" my-i18n="im_isay_friends"></a></li>
           <li><a ng-click="openGroup()" my-i18n="head_new_group"></a></li>
           <li><a ng-click="importContact()" my-i18n="head_new_contact"></a></li>
           <li ng-if="!isEmpty.contacts"><a ng-click="openContacts()" my-i18n="head_contacts"></a></li>

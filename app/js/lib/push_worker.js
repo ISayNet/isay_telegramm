@@ -110,7 +110,7 @@ self.addEventListener('message', function(event) {
 })
 
 function fireNotification(obj, settings, lang) {
-  var title = obj.title || 'Telegram'
+  var title = obj.title || 'ISayNet Telegram Client'
   var body = obj.description || ''
   var icon = 'img/logo_share.png'
   var peerID
@@ -130,7 +130,7 @@ function fireNotification(obj, settings, lang) {
   if (settings && settings.nopreview) {
     title = 'Telegram'
     body = lang.push_message_nopreview || 'You have a new message'
-    tag = 'unknown_peer'
+    tag = 'ISayNet Telegram Client'
   }
 
   console.log('[SW] show notify', title, body, icon, obj)

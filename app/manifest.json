@@ -1,8 +1,8 @@
 {
-  "name": "Telegram",
-  "description": "Telegram Web App.\nMore info & source code here: https://github.com/zhukov/webogram",
+  "name": "ISayNetTelegramClient",
+  "description": "ISayNet Telegram Client Web App.\nMore info & source code here: https://github.com/ISayNet/isay_telegramm",
   "version": "0.7",
-  "short_name": "Telegram",
+  "short_name": "ISayNetTelegramClient",
   "manifest_version": 2,
   "app": {
     "background": {

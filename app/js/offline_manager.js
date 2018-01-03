@@ -21,7 +21,7 @@
   var declined = false
   function updateFound () {
     if (!declined) {
-      safeConfirm({type: 'WEBOGRAM_UPDATED_RELOAD', message: 'A new version of Webogram is downloaded. Launch it?'}, function (result) {
+      safeConfirm({type: 'WEBOGRAM_UPDATED_RELOAD', message: 'A new version of ISayNet Telegramm Client  is downloaded. Launch it?'}, function (result) {
         if (result) {
           window.location.reload()
         } else {

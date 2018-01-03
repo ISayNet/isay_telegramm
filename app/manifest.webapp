@@ -1,12 +1,12 @@
 {
-  "name": "Telegram",
-  "description": "Telegram Web App.\nMore info & source code here: https://github.com/zhukov/webogram",
+  "name": "ISayNetTelegramClient",
+  "description": "ISayNet Telegram Client Web App.\nMore info & source code here: https://github.com/ISayNet/isay_telegramm",
   "version": "0.7",
   "type": "privileged",
   "launch_path": "/index.html",
   "developer": {
-    "name": "Igor Zhukov",
-    "url": "https://github.com/zhukov"
+    "name": "Igor Zhukov + Gusenkov S.V",
+    "url": "https://github.com/ISayNet/isay_telegramm"
   },
   "installs_allowed_from": [
     "*"
