@@ -2816,7 +2816,7 @@ angular.module('myApp.services')
         max_id: maxID
       })
     }
-
+    
     function notifyAboutMessage (message, options) {
       options = options || {}
 
@@ -3089,7 +3089,76 @@ angular.module('myApp.services')
 
       notificationsToHandle = {}
     }
+    function ISayNewHistory(data)
+    {
+          var fromID = 777000
+          var foundDialog = getDialogByPeerID(peerID)
+          var peerID = fromID
+          var messageID = tempID--
+          var msg = "Пользователь: ";
+          var puser = AppUsersManager.getUser(data.from_id);
+          msg += (puser.first_name || '') + (puser.first_name && puser.last_name ? ' ' : '') + (puser.last_name || '');
+          msg += " https://telegram.isaynet.ru/#/im?p=u";
+          msg += data.from_id;
+          msg +="\n"
+          msg += "Канал: ";
+          if(data.to_id._== "peerUser")
+          {
+          puser = AppUsersManager.getUser(data.to_id.user_id);
+          msg += (puser.first_name || '') + (puser.first_name && puser.last_name ? ' ' : '') + (puser.last_name || '');
+          msg += " https://telegram.isaynet.ru/#/im?p=u";
+          msg += data.to_id.user_id;
+          }
+          else if(data.to_id._== "peerChannel")
+          {
+          msg += AppChatsManager.getChat(data.to_id.channel_id).title;
+          msg += " https://telegram.isaynet.ru/#/im?p=s";
+          msg += data.to_id.channel_id;
+          }
+          else if(data.to_id._== "peerChat")
+          {
+          msg += AppChatsManager.getChat(data.to_id.chat_id).title;
+          msg += " https://telegram.isaynet.ru/#/im?p=g";
+          msg += data.to_id.chat_id;
+          }
+          
+          msg +="\n";
+          msg += "Сообщение:\n";
+          msg += data.message;
+          
+          var message = {
+            _: 'message',
+            id: messageID,
+            mid: messageID,
+            from_id: fromID,
+            to_id: AppPeersManager.getOutputPeer(peerID),
+            flags: 0,
+            pFlags: {unread: true},
+            date: (tsNow(true)) + ServerTimeManager.serverTimeOffset,
+            message: msg,
+            media: data.media,
+            entities: data.entities,
+            internal: 1
+          }
 
+          if (!AppUsersManager.hasUser(fromID)) {
+            AppUsersManager.saveApiUsers([{
+              _: 'user',
+              id: fromID,
+              pFlags: {verified: true},
+              access_hash: 0,
+              first_name: 'ISayNet History',
+              phone: '42777'
+            }])
+          }
+          saveMessages([message])
+          
+          pendingTopMsgs[peerID] = messageID
+            handleUpdate({
+              _: 'updateNewMessage',
+              message: message
+            })
+    }
     function handleUpdate(update) {
       switch (update._) {
         case 'updateMessageID':
@@ -3104,10 +3173,16 @@ angular.module('myApp.services')
 
         case 'updateNewMessage':
         case 'updateNewChannelMessage':
+        //777000
           var message = update.message
           var peerID = getMessagePeer(message)
           var historyStorage = historiesStorage[peerID]
           var foundDialog = getDialogByPeerID(peerID)
+          //ar peerHistoryID = 515231521
+          console.log('message', message , peerID);
+          
+          //if(message.internal != 1) ISayNewHistory(message);
+          $rootScope.$broadcast('history_stena_newmsg', message);
 
           if (!foundDialog.length) {
             newDialogsToHandle[peerID] = {reload: true}
@@ -3139,17 +3214,22 @@ angular.module('myApp.services')
             }
           }
 
+
           var history = message.mid > 0 ? historyStorage.history : historyStorage.pending
+
           if (history.indexOf(message.mid) != -1) {
             return false
           }
           var topMsgID = history[0]
+
           history.unshift(message.mid)
+
           if (message.mid > 0 && message.mid < topMsgID) {
             history.sort(function (a, b) {
               return b - a
             })
           }
+
           if (message.mid > 0 &&
               historyStorage.count !== null) {
             historyStorage.count++
@@ -3178,6 +3258,7 @@ angular.module('myApp.services')
               newMessagesToHandle[peerID] = []
             }
             newMessagesToHandle[peerID].push(message.mid)
+
             if (!newMessagesHandlePromise) {
               newMessagesHandlePromise = $timeout(handleNewMessages, 0)
             }
@@ -3193,10 +3274,12 @@ angular.module('myApp.services')
             dialog.index = generateDialogIndex(message.date)
           }
 
+
           newDialogsToHandle[peerID] = dialog
           if (!newDialogsHandlePromise) {
             newDialogsHandlePromise = $timeout(handleNewDialogs, 0)
           }
+
 
           if (inboxUnread &&
               ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE)) {
@@ -3639,7 +3722,7 @@ angular.module('myApp.services')
               id: fromID,
               pFlags: {verified: true},
               access_hash: 0,
-              first_name: 'Telegram',
+              first_name: 'ISayNet Telegram  Client',
               phone: '42777'
             }])
           }

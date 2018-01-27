@@ -173,7 +173,25 @@ angular.module('myApp.directives', ['myApp.filters'])
       }
     }
   })
+  
+  .directive('myMessageStena', function ($filter, _) {
+    var dateFilter = $filter('myDate')
+    var dateSplitHtml = '<div class="im_message_date_split im_service_message_wrap"><div class="im_service_message"><span class="copyonly"><br/>---&nbsp;</span><span class="im_message_date_split_text"></span><span class="copyonly">&nbsp;---</span></div></div>'
+    var unreadSplitHtml = '<div class="im_message_unread_split">' + _('unread_messages_split') + '</div>'
+    var selectedClass = 'im_message_selected'
+    var focusClass = 'im_message_focus'
+    var unreadClass = 'im_message_unread'
+    var errorClass = 'im_message_error'
+    var pendingClass = 'im_message_pending'
 
+    return {
+      templateUrl: templateUrl('message_stena'),
+      link: link
+    }
+
+    function link ($scope, element, attrs) {
+    }
+  })
   .directive('myMessageBody', function ($compile, AppPeersManager, AppChatsManager, AppUsersManager, AppMessagesManager, AppInlineBotsManager, RichTextProcessor) {
     var messageMediaCompiled = $compile('<div class="im_message_media" my-message-media="media" message-id="messageId"></div>')
     var messageKeyboardCompiled = $compile('<div class="im_message_keyboard" my-inline-reply-markup="markup"></div>')
@@ -1586,6 +1604,7 @@ angular.module('myApp.directives', ['myApp.filters'])
         if (!element.is(':visible') && !$(element[0].parentNode.parentNode).is(':visible')) {
           return
         }
+
         if ($(sendFormWrap).is(':visible')) {
           if (!sendForm || !sendForm.offsetHeight) {
             sendForm = $('.im_send_form', element)[0]
@@ -1634,6 +1653,380 @@ angular.module('myApp.directives', ['myApp.filters'])
         var marginTop = scrollableWrap.offsetHeight -
         historyMessagesEl.offsetHeight -
         emptyWrapEl.offsetHeight -
+        (Config.Mobile ? 0 : 39)
+
+        if (historyMessagesEl.offsetHeight > 0 && marginTop > 0) {
+          $(historyMessagesEl).css({marginTop: marginTop})
+        }
+        $(historyWrap).nanoScroller()
+      }
+
+      $($window).on('resize', updateSizes)
+
+      updateSizes()
+      onContentLoaded(updateSizes)
+    }
+  })
+  .directive('myHistoryStena', function ($window, $timeout, $rootScope, $transition) {
+    return {
+      link: link
+    }
+
+    function link ($scope, element, attrs) {
+      var historyWrap = $('.im_history_wrap_stena', element)[0]
+      var historyMessagesEl = $('.im_history_messages_stena', element)[0]
+      var scrollableWrap = $('.im_history_scrollable_wrap_stena', element)[0]
+      var scrollable = $('.im_history_scrollable_stena', element)[0]
+      var headWrap = $('.tg_page_head')[0]
+      var footer = $('.footer_wrap')[0]
+      var moreNotified = false
+      var lessNotified = false
+
+      onContentLoaded(function () {
+        scrollableWrap.scrollTop = scrollableWrap.scrollHeight
+      })
+      $(historyWrap).nanoScroller({preventPageScrolling: true, tabIndex: -1, iOSNativeScrolling: true})
+
+      var updateScroller = function (delay) {
+        // console.trace('scroller update', delay)
+        $timeout(function () {
+          if (!$(scrollableWrap).hasClass('im_history_to_bottom')) {
+            $(historyWrap).nanoScroller()
+          }
+        }, delay || 0)
+      }
+
+      var transform = false
+      var trs = ['transform', 'webkitTransform', 'MozTransform', 'msTransform', 'OTransform']
+      var i
+      for (i = 0; i < trs.length; i++) {
+        if (trs[i] in historyMessagesEl.style) {
+          transform = trs[i]
+          break
+        }
+      }
+
+      var animated = transform && false ? true : false // ?
+      var curAnimation = false
+
+      $scope.$on('ui_history_append_new', function (e, options) {
+        if (!atBottom && !options.my) {
+          onContentLoaded(function () {
+            $(historyWrap).nanoScroller()
+          })
+          return
+        }
+        if (options.idleScroll) {
+          onContentLoaded(function () {
+            $(historyWrap).nanoScroller()
+            changeScroll(true)
+          })
+          return
+        }
+        var curAnimated = animated &&
+            !$rootScope.idle.isIDLE &&
+            historyMessagesEl.clientHeight > 0
+        var wasH
+
+        if (curAnimated) {
+          wasH = scrollableWrap.scrollHeight
+        } else {
+          var pr = parseInt($(scrollableWrap).css('paddingRight'))
+          $(scrollable).css({bottom: 0, paddingRight: pr})
+          $(scrollableWrap).addClass('im_history_to_bottom')
+        }
+
+        onContentLoaded(function () {
+          if (curAnimated) {
+            curAnimation = true
+            $(historyMessagesEl).removeClass('im_history_appending')
+            scrollableWrap.scrollTop = scrollableWrap.scrollHeight
+            $(historyMessagesEl).css(transform, 'translate(0px, ' + (scrollableWrap.scrollHeight - wasH) + 'px)')
+            $(historyWrap).nanoScroller()
+            var styles = {}
+            styles[transform] = 'translate(0px, 0px)'
+            $(historyMessagesEl).addClass('im_history_appending')
+            $transition($(historyMessagesEl), styles).then(function () {
+              curAnimation = false
+              $(historyMessagesEl).removeClass('im_history_appending')
+              updateBottomizer()
+            })
+          } else {
+            $(scrollableWrap).removeClass('im_history_to_bottom')
+            $(scrollable).css({bottom: '', paddingRight: 0})
+            scrollableWrap.scrollTop = scrollableWrap.scrollHeight
+            updateBottomizer()
+          }
+        })
+      })
+
+      function changeScroll (noFocus, animated) {
+        var unreadSplit
+        var focusMessage
+
+        var newScrollTop = false
+        var afterScrollAdd
+        // console.trace(dT(), 'change scroll', animated)
+        if (!noFocus &&
+          (focusMessage = $('.im_message_focus:visible', scrollableWrap)[0])) {
+          // console.log(dT(), 'change scroll to focus', focusMessage)
+          var ch = scrollableWrap.clientHeight
+          var st = scrollableWrap.scrollTop
+          var ot = focusMessage.offsetTop
+          var h = focusMessage.clientHeight
+          if (!st || st + ch < ot || st > ot + h || animated) {
+            newScrollTop = Math.max(0, ot - Math.floor(ch / 2) + 26)
+          }
+          atBottom = false
+
+          afterScrollAdd = function () {
+            var unfocusMessagePromise = $(focusMessage).data('unfocus_promise')
+            if (unfocusMessagePromise) {
+              $timeout.cancel(unfocusMessagePromise)
+              $(focusMessage).removeClass('im_message_focus_active')
+            }
+            $timeout(function () {
+              $(focusMessage).addClass('im_message_focus_active')
+              unfocusMessagePromise = $timeout(function () {
+                $(focusMessage).removeClass('im_message_focus_active')
+                $(focusMessage).data('unfocus_promise', false)
+              }, 2800)
+              $(focusMessage).data('unfocus_promise', unfocusMessagePromise)
+            })
+          }
+        } else if (unreadSplit = $('.im_message_unread_split:visible', scrollableWrap)[0]) {
+          // console.log(dT(), 'change scroll unread', unreadSplit.offsetTop)
+          newScrollTop = Math.max(0, unreadSplit.offsetTop - 52)
+          atBottom = false
+        } else {
+          // console.log(dT(), 'change scroll bottom')
+          newScrollTop = scrollableWrap.scrollHeight
+          atBottom = true
+        }
+        if (newScrollTop !== false) {
+          var afterScroll = function () {
+            updateScroller()
+            $timeout(function () {
+              $(scrollableWrap).trigger('scroll')
+              scrollTopInitial = scrollableWrap.scrollTop
+            })
+            if (afterScrollAdd) {
+              afterScrollAdd()
+            }
+          }
+          if (animated) {
+            $(scrollableWrap).animate({scrollTop: newScrollTop}, 200, afterScroll)
+          } else {
+            scrollableWrap.scrollTop = newScrollTop
+            afterScroll()
+          }
+        }
+      }
+
+      $scope.$on('history_direction_key', function (e, data) {
+        var newScrollTop = false
+        console.warn('scroll top', data.keyCode)
+        switch (data.keyCode) {
+          case 33: // page up
+            newScrollTop = scrollableWrap.scrollTop - scrollableWrap.clientHeight
+            break
+          case 34: // page down
+            newScrollTop = scrollableWrap.scrollTop + scrollableWrap.clientHeight
+            break
+          case 36: // home
+            newScrollTop = 0
+            break
+          case 35: // end
+            newScrollTop = scrollableWrap.scrollHeight
+            break
+        }
+        if (newScrollTop !== false) {
+          $(scrollableWrap).stop().animate({scrollTop: newScrollTop}, 200)
+        }
+      })
+
+      $scope.$on('ui_history_change', function () {
+        var pr = parseInt($(scrollableWrap).css('paddingRight'))
+        $(scrollableWrap).addClass('im_history_to_bottom')
+        scrollableWrap.scrollHeight // Some strange Chrome bug workaround
+        $(scrollable).css({bottom: 0, paddingRight: pr})
+        onContentLoaded(function () {
+          $(scrollableWrap).removeClass('im_history_to_bottom')
+          $(scrollable).css({bottom: '', paddingRight: ''})
+          updateSizes(true)
+          moreNotified = false
+          lessNotified = false
+          changeScroll()
+        })
+      })
+
+      $scope.$on('ui_history_change_scroll', function (e, animated) {
+        onContentLoaded(function () {
+          changeScroll(false, animated)
+        })
+      })
+
+      $scope.$on('ui_history_focus', function () {
+        if (!atBottom) {
+          // console.log(dT(), 'scroll history focus')
+          scrollableWrap.scrollTop = scrollableWrap.scrollHeight
+          updateScroller()
+          atBottom = true
+        }
+      })
+
+      $scope.$on('ui_history_prepend', function () {
+        var sh = scrollableWrap.scrollHeight
+        var st = scrollableWrap.scrollTop
+        var pr = parseInt($(scrollableWrap).css('paddingRight'))
+        var ch = scrollableWrap.clientHeight
+
+        $(scrollableWrap).addClass('im_history_to_bottom')
+        scrollableWrap.scrollHeight // Some strange Chrome bug workaround
+        $(scrollable).css({bottom: -(sh - st - ch), paddingRight: pr})
+
+        var upd = function () {
+          $(scrollableWrap).removeClass('im_history_to_bottom')
+          $(scrollable).css({bottom: '', paddingRight: ''})
+          if (scrollTopInitial >= 0) {
+            changeScroll()
+          } else {
+            // console.log('change scroll prepend')
+            scrollableWrap.scrollTop = st + scrollableWrap.scrollHeight - sh
+          }
+
+          updateBottomizer()
+          moreNotified = false
+
+          $timeout(function () {
+            if (scrollableWrap.scrollHeight != sh) {
+              $(scrollableWrap).trigger('scroll')
+            }
+          })
+
+          clearTimeout(timer)
+          unreg()
+        }
+        var timer = setTimeout(upd, 0)
+        var unreg = $scope.$on('$viewContentLoaded', upd)
+      })
+
+      $scope.$on('ui_history_append', function () {
+        var sh = scrollableWrap.scrollHeight
+        onContentLoaded(function () {
+          atBottom = false
+          updateBottomizer()
+          lessNotified = false
+
+          if (scrollTopInitial >= 0) {
+            changeScroll()
+          }
+
+          $timeout(function () {
+            if (scrollableWrap.scrollHeight != sh) {
+              $(scrollableWrap).trigger('scroll')
+            }
+          })
+        })
+      })
+
+      $scope.$on('ui_panel_update', function (e, data) {
+        updateSizes()
+        onContentLoaded(function () {
+          updateSizes()
+          if (data && data.blur) {
+            $scope.$broadcast('ui_message_blur')
+          } else if (!getSelectedText()) {
+            $scope.$broadcast('ui_message_send')
+          }
+
+          $timeout(function () {
+            $(scrollableWrap).trigger('scroll')
+          })
+        })
+      })
+
+      $scope.$on('ui_selection_clear', function () {
+        if (window.getSelection) {
+          if (window.getSelection().empty) { // Chrome
+            window.getSelection().empty()
+          } else if (window.getSelection().removeAllRanges) { // Firefox
+            window.getSelection().removeAllRanges()
+          }
+        } else if (document.selection) { // IE?
+          document.selection.empty()
+        }
+      })
+
+      $scope.$on('ui_editor_resize', updateSizes)
+      $scope.$on('ui_height', function () {
+        onContentLoaded(updateSizes)
+      // updateSizes()
+      })
+
+      var atBottom = true
+      var scrollTopInitial = -1
+      $(scrollableWrap).on('scroll', function (e) {
+        if (!element.is(':visible') ||
+          $(scrollableWrap).hasClass('im_history_to_bottom') ||
+          curAnimation) {
+          return
+        }
+        var st = scrollableWrap.scrollTop
+        atBottom = st >= scrollableWrap.scrollHeight - scrollableWrap.clientHeight
+        if (scrollTopInitial >= 0 && scrollTopInitial != st) {
+          scrollTopInitial = -1
+        }
+
+        if (!moreNotified && st <= 300) {
+          moreNotified = true
+          $scope.$emit('history_need_more')
+        } else if (!lessNotified && st >= scrollableWrap.scrollHeight - scrollableWrap.clientHeight - 300) {
+          lessNotified = true
+          $scope.$emit('history_need_less')
+        }
+      })
+
+      function updateSizes (heightOnly) {
+        if (!element.is(':visible') && !$(element[0].parentNode.parentNode).is(':visible')) {
+          return
+        }
+
+
+        if (!headWrap || !headWrap.offsetHeight) {
+          headWrap = $('.tg_page_head')[0]
+        }
+        if (!footer || !footer.offsetHeight) {
+          footer = $('.footer_wrap')[0]
+        }
+
+        var footerHeight = footer ? footer.offsetHeight : 0
+        if (footerHeight) {
+          footerHeight++ // Border bottom
+        }
+        var historyH = $($window).height() -  (headWrap ? headWrap.offsetHeight : 48) - footerHeight
+
+        $(historyWrap).css({
+          height: historyH
+        })
+
+        updateBottomizer()
+
+        if (heightOnly === true) return
+        if (atBottom) {
+          onContentLoaded(function () {
+            // console.log('change scroll bottom')
+            scrollableWrap.scrollTop = scrollableWrap.scrollHeight
+            updateScroller()
+          })
+        }
+        updateScroller(100)
+      }
+
+      function updateBottomizer () {
+        $(historyMessagesEl).css({marginTop: 0})
+        var marginTop = scrollableWrap.offsetHeight -
+        historyMessagesEl.offsetHeight -
         (Config.Mobile ? 0 : 39)
 
         if (historyMessagesEl.offsetHeight > 0 && marginTop > 0) {
@@ -3169,6 +3562,14 @@ angular.module('myApp.directives', ['myApp.filters'])
       var forDialog = attrs.forDialog && $scope.$eval(attrs.forDialog)
 
       var update = function () {
+        if(userID == 778000)
+        {
+        element
+            .html('')
+            .toggleClass('status_online', true)
+        }
+        else
+        {
         var user = AppUsersManager.getUser(userID)
         if (forDialog && user.pFlags.self) {
           element.html('')
@@ -3176,6 +3577,7 @@ angular.module('myApp.directives', ['myApp.filters'])
           element
             .html(statusFilter(user, attrs.botChatPrivacy))
             .toggleClass('status_online', (user.status && user.status._ == 'userStatusOnline') || false)
+        }
         }
         // console.log(dT(), 'update status', element[0], user.status && user.status, tsNow(true), element.html())
       }
@@ -3337,6 +3739,85 @@ angular.module('myApp.directives', ['myApp.filters'])
     }
   })
 
+    .directive('myPeerStenaLink', function (_, $rootScope, AppPeersManager, AppChatsManager, AppUsersManager, AppMessagesIDsManager) {
+    return {
+      link: link
+    }
+
+    function link ($scope, element, attrs) {
+      var override = attrs.userOverride && $scope.$eval(attrs.userOverride) || {}
+      var short = attrs.short && $scope.$eval(attrs.short)
+      var username = attrs.username && $scope.$eval(attrs.username)
+      var forDialog = attrs.forDialog && $scope.$eval(attrs.forDialog)
+
+      var peerID
+      var update = function () {
+        if (element[0].className.indexOf('user_color_') != -1) {
+          element[0].className = element[0].className.replace(/user_color_\d+/g, '')
+        }
+          if(peerID == 778000) {
+            element.html( 'Стена: <i class="icon-verified"></i>');
+          }
+          else if (peerID > 0) {
+          var user = AppUsersManager.getUser(peerID)
+          if (forDialog && user.pFlags.self) {
+            element.text(_('user_name_saved_msgs_raw'))
+          } else {
+            var prefix = username ? '@' : ''
+            var key = username ? 'username' : (short ? 'rFirstName' : 'rFullName')
+
+            element.html(
+              prefix +
+              (override[key] || user[key] || '').valueOf() +
+              (attrs.verified && user.pFlags && user.pFlags.verified ? ' <i class="icon-verified"></i>' : '')
+            )
+
+            if (attrs.color && $scope.$eval(attrs.color)) {
+              element.addClass('user_color_' + user.num)
+            }
+          }
+        } else {
+          var chat = AppChatsManager.getChat(-peerID)
+
+          element.html(
+            (chat.rTitle || '').valueOf() +
+            (attrs.verified && chat.pFlags && chat.pFlags.verified ? ' <i class="icon-verified"></i>' : '')
+          )
+        }
+      }
+
+      if (element[0].tagName == 'A' && !hasOnclick(element[0])) {
+        element.on('click', function () {
+          params={}
+          params.peerString = AppPeersManager.getPeerString(peerID);
+          $rootScope.$broadcast('history_focus', params);
+        })
+      }
+
+
+      if (attrs.peerWatch) { // userWatch, chatWatch
+        $scope.$watch(attrs.myPeerLink, function (newPeerID) {
+          peerID = newPeerID
+          update()
+        })
+      } else {
+        peerID = $scope.$eval(attrs.myPeerLink)
+        update()
+      }
+      if (!attrs.noWatch) {
+        $scope.$on('user_update', function (e, updUserID) {
+          if (peerID == updUserID) {
+            update()
+          }
+        })
+        $scope.$on('chat_update', function (e, updChatID) {
+          if (peerID == -updChatID) {
+            update()
+          }
+        })
+      }
+    }
+  })
   .directive('myPeerLink', function (_, $rootScope, AppPeersManager, AppChatsManager, AppUsersManager, AppMessagesIDsManager) {
     return {
       link: link
@@ -3353,7 +3834,10 @@ angular.module('myApp.directives', ['myApp.filters'])
         if (element[0].className.indexOf('user_color_') != -1) {
           element[0].className = element[0].className.replace(/user_color_\d+/g, '')
         }
-        if (peerID > 0) {
+          if(peerID == 778000) {
+            element.html( 'Стена: <i class="icon-verified"></i>');
+          }
+          else if (peerID > 0) {
           var user = AppUsersManager.getUser(peerID)
           if (forDialog && user.pFlags.self) {
             element.text(_('user_name_saved_msgs_raw'))
@@ -3430,6 +3914,8 @@ angular.module('myApp.directives', ['myApp.filters'])
       }
     }
   })
+
+
 
   .directive('myPeerPhotolink', function (AppPeersManager, AppUsersManager, AppChatsManager, MtpApiFileManager, FileManager) {
     return {

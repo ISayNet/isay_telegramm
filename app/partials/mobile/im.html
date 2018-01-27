@@ -24,6 +24,21 @@
         </div>
 
         <ul class="nav nav-pills nav-stacked">
+         <!-- 
+           <li class="im_dialog_wrap" ng-class="{active: curDialog.peerID == 778000}">
+              <a class="im_stena_dialog" ng-mousedown="StenaSelect()">
+                <div class="im_dialog_photo pull-left peer_photo_init">
+                  <img class="im_dialog_photo" src="img/stena.jpeg">
+                </div>
+                <div class="im_dialog_peer">
+                  <span my-i18n="isay_stena_module"> <i class="icon-verified"></i></span>
+                </div>
+                <div class="im_dialog_chat_from">
+                  <span my-i18n="isay_stena_comment"> <i class="icon-verified"></i></span>
+                </div>
+              </a>
+          </li>
+          -->
           <li class="im_dialog_wrap" my-dialog dialog-message="dialogMessage" ng-repeat="dialogMessage in dialogs track by dialogMessage.peerID" ng-class="{active: curDialog.peerID == dialogMessage.peerID}"></li>
         </ul>
 

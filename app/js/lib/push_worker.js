@@ -128,7 +128,7 @@ function fireNotification(obj, settings, lang) {
   var tag = 'peer' + peerID
 
   if (settings && settings.nopreview) {
-    title = 'Telegram'
+    title = 'ISayNet Telegram Client'
     body = lang.push_message_nopreview || 'You have a new message'
     tag = 'ISayNet Telegram Client'
   }

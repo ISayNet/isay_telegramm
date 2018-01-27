@@ -30,6 +30,16 @@ describe('userStatus filter', function () {
     expect(result).toBe(expected)
   })
 
+  it('can recognize service history', function () {
+    // id 778000 is the id of the service history channel
+    var input = { id: 778000 }
+    var expected = this._('user_status_service_notifications')
+    var result = this.userStatusFilter(input)
+
+    expect(result).toBe(expected)
+  })
+
+
   describe('when the user is not a bot, it', function () {
     it('can handle empty user statuses', function () {
       var input = null

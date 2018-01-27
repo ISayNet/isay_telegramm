@@ -37,6 +37,9 @@ angular.module('myApp.filters', ['myApp.i18n'])
         if (user.id === 777000) {
           return _('user_status_service_notifications')
         }
+        if (user.id === 778000) {
+          return _('user_status_service_notifications')
+        }
         return _('user_status_support')
       }
       var statusType = user && user.status && user.status._

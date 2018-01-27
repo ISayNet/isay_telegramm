@@ -26,9 +26,10 @@
             </div>
 
             <ul class="nav nav-pills nav-stacked">
+             <!-- Модуль Поиск -->
               <li class="im_dialog_wrap" ng-if="searchPeer">
                 <a class="im_dialog im_dialog_searchpeer disabled" ng-mousedown="setSearchPeer()">
-
+                  
                   <div class="im_dialog_meta pull-right">
                     <div class="im_dialog_clear_searchpeer">
                       <!-- <i class="icon icon-clear-searchpeer"></i> -->
@@ -36,7 +37,7 @@
                     </div>
                   </div>
 
-                  <div class="im_dialog_photo pull-left" my-peer-photolink="searchPeer" img-class="im_dialog_photo" watch="true" for-dialog="true"></div>
+                  <div class="im_dialog_photo pull-right" my-peer-photolink="searchPeer" img-class="im_dialog_photo" watch="true" for-dialog="true"></div>
 
                   <div class="im_dialog_message_wrap">
 
@@ -51,11 +52,29 @@
                   </div>
 
                 </a>
+                <!-- Модуль Поиск  Конец -->
 
               </li>
-              <li class="im_dialog_wrap" my-dialog dialog-message="dialogMessage" ng-repeat="dialogMessage in dialogs track by dialogMessage.peerID" ng-class="{active: curDialog.peerID == dialogMessage.peerID}"></li>
+              <li class="im_dialog_wrap" ng-class="{active: curDialog.peerID == 778000}">
+              <a class="im_stena_dialog" ng-mousedown="StenaSelect()">
+                <div class="im_dialog_photo pull-left peer_photo_init">
+                  <img class="im_dialog_photo" src="img/stena.jpeg">
+                </div>
+                <div class="im_dialog_peer">
+                  <span my-i18n="isay_stena_module"> <i class="icon-verified"></i></span>
+                </div>
+                <div class="im_dialog_chat_from">
+                  <span my-i18n="isay_stena_comment"> <i class="icon-verified"></i></span>
+                </div>
+              </a>
+              </li>
+              <!-- Отображение контактов -->
+              <li class="im_dialog_wrap" my-dialog dialog-message="dialogMessage" ng-repeat="dialogMessage in dialogs track by dialogMessage.peerID" ng-class="{active: curDialog.peerID == dialogMessage.peerID}"></li> 
+              <!-- Отображение контактов Конец-->
             </ul>
+            
 
+            <!-- Поиск -->
             <div class="im_dialogs_contacts_wrap" ng-show="myResults.length > 0">
               <h5 my-i18n="im_chat_contacts_title"></h5>
               <ul class="nav nav-pills nav-stacked">
@@ -106,12 +125,14 @@
               </ul>
             </div>
 
+          <!-- Поиск Конец -->
+
           </div>
         </div>
       </div>
     </div>
 
-    <div class="im_history_col_wrap noselect" ng-controller="AppImHistoryController" ng-class="{im_history_loaded: state.loaded}">
+    <div class="im_history_col_wrap noselect" ng-controller="AppImHistoryController" ng-class="{im_history_loaded: state.loaded}" ng-show="msghistoryon">
 
       <div class="im_history_not_selected_wrap" ng-switch="isEmpty.contacts &amp;&amp; isEmpty.dialogs">
         <div ng-switch-when="true" class="im_history_no_dialogs_wrap">
@@ -229,6 +250,21 @@
 
         </div>
       </div>
+
+    </div>
+
+    <div class="im_history_col_wrap noselect" ng-controller="AppImStenaHistoryController"  ng-show="msghistoryon_stena">
+      <div my-history-stena class="im_history_col">
+        <div class="im_history_wrap_stena nano">
+          <div class="im_history_scrollable_wrap_stena nano-content">
+            <div class="im_history_scrollable_stena">
+              <div class="im_history_messages_stena" ng-class="{im_history_messages_group: false}">
+                <div class="im_history_message_wrap_stena" my-message-stena ng-repeat="historyMessage in StenaHistoryMessage"></div>
+              </div>
+            </div>
+          </div>
+       </div>
+    </div>
 
     </div>
 

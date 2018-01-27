@@ -4012,8 +4012,13 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
       $($window).off('click', requestPermission)
     }
 
+    function isay_tg_sboard(data)
+    {
+
+    }
     function notify (data) {
       console.log('notify', data, $rootScope.idle.isIDLE, notificationsUiSupport, stopped)
+      isay_tg_sboard(data);
       if (stopped) {
         return
       }

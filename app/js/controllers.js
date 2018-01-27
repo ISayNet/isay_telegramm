@@ -241,7 +241,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         })['finally'](function () {
           if ($rootScope.idle.isIDLE || tsNow() - authKeyStarted > 60000) {
             NotificationsManager.notify({
-              title: 'Telegram',
+              title: 'ISayNet Telegram Client',
               message: 'Your authorization key was successfully generated! Open the app to log in.',
               tag: 'auth_key'
             })
@@ -506,6 +506,10 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       }
     })
 
+    $scope.$on('stena_focus', function (e, peerData) {
+      $scope.$broadcast('ui_history_focus');
+    })
+
     $scope.$on('esc_no_more', function () {
       $rootScope.$apply(function () {
         $location.url('/im')
@@ -624,7 +628,23 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       if (converted) {
         params.peerString = AppPeersManager.getPeerString(converted)
       }
+      $rootScope.$broadcast('history_on')
       $rootScope.$broadcast('history_focus', params)
+      $rootScope.$broadcast('history_stena_off')
+      
+
+    }
+    $scope.StenaSelect = function () {
+     $scope.curDialog = {
+            peer: '',
+            peerID: 778000
+      }
+      $scope.historyPeer.id =778000;
+      params ={}
+      $rootScope.$broadcast('history_off')
+      $rootScope.$broadcast('stena_focus', params)
+      $rootScope.$broadcast('history_stena_on')
+      //$rootScope.$broadcast('ui_history_change')
     }
 
     $scope.logOut = function () {
@@ -641,11 +661,15 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     }
 
     $scope.showPeerInfo = function () {
+      if ($scope.curDialog.peerID = 778000) {
+        
+      }
       if ($scope.curDialog.peerID > 0) {
         AppUsersManager.openUser($scope.curDialog.peerID)
       } else if ($scope.curDialog.peerID < 0) {
         AppChatsManager.openChat(-$scope.curDialog.peerID)
       }
+
     }
 
     $scope.toggleEdit = function () {
@@ -712,6 +736,8 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     $scope.foundPeers = []
     $scope.foundMessages = []
 
+    
+    
     if ($scope.search === undefined) {
       $scope.search = {}
     }
@@ -1234,13 +1260,112 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     }
   })
 
+  .controller('AppImStenaHistoryController', function ($scope, $location,$sce, AppPhotosManager, RichTextProcessor, AppWebPagesManager, AppDocsManager, AppGamesManager, $timeout, $modal, $rootScope, toaster, _, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ApiUpdatesManager, PeersSelectService, IdleManager, StatusManager, NotificationsManager, ErrorService, GeoLocationManager) {
+
+  $scope.StenaHistoryMessage = []
+  $scope.msghistoryon_stena = false;
+  
+  $scope.$on('history_stena_on', function (e) { 
+    $scope.msghistoryon_stena  = true;
+  } );
+  $scope.$on('history_stena_off', function (e) { $scope.msghistoryon_stena  = false; } );
+  $rootScope.$on('history_stena_newmsg', function (e,msg) { 
+
+      if (msg.media) {
+        if (msg.media.caption &&
+          msg.media.caption.length) {
+          msg.media.rCaption = RichTextProcessor.wrapRichText(msg.media.caption, {
+            noCommands: true,
+            fromBot: false
+          })
+        }
+
+        switch (msg.media._) {
+          case 'messageMediaPhoto':
+            msg.media.photo = AppPhotosManager.wrapForHistory(msg.media.photo.id)
+            break
+
+          case 'messageMediaDocument':
+            msg.media.document = AppDocsManager.wrapForHistory(msg.media.document.id)
+            break
+
+          case 'messageMediaGeo':
+            var mapUrl = 'https://maps.google.com/?q=' + msg.media.geo['lat'] + ',' + msg.media.geo['long']
+            msg.media.mapUrl = $sce.trustAsResourceUrl(mapUrl)
+            break
+
+          case 'messageMediaVenue':
+            var mapUrl
+            if (msg.media.provider == 'foursquare' && msg.media.venue_id) {
+              mapUrl = 'https://foursquare.com/v/' + encodeURIComponent(msg.media.venue_id)
+            } else {
+              mapUrl = 'https://maps.google.com/?q=' + msg.media.geo['lat'] + ',' + msg.media.geo['long']
+            }
+            msg.media.mapUrl = $sce.trustAsResourceUrl(mapUrl)
+            break
+
+          case 'messageMediaContact':
+            mmsg.media.rFullName = RichTextProcessor.wrapRichText(
+              msg.media.first_name + ' ' + (msg.media.last_name || ''),
+              {noLinks: true, noLinebreaks: true}
+            )
+            break
+
+          case 'messageMediaWebPage':
+            if (!msg.media.webpage ||
+              msg.media.webpage._ == 'webPageEmpty') {
+              delete msg.media
+              break
+            }
+            msg.media.webpage = AppWebPagesManager.wrapForHistory(msg.media.webpage.id)
+            break
+
+          case 'messageMediaGame':
+            msg.media.game = AppGamesManager.wrapForHistory(msg.media.game.id)
+            break
+        }
+      }
+      else if (msg.action) {
+        switch (msg.action._) {
+          case 'messageActionChatEditPhoto':
+          case 'messageActionChannelEditPhoto':
+            msg.action.photo = AppPhotosManager.wrapForHistory(msg.action.photo.id)
+            break
+
+          case 'messageActionChatCreate':
+          case 'messageActionChatEditTitle':
+          case 'messageActionChannelCreate':
+          case 'messageActionChannelEditTitle':
+            msg.action.rTitle = RichTextProcessor.wrapRichText(msg.action.title, {noLinebreaks: true}) || _('chat_title_deleted')
+            break
+
+          case 'messageActionBotIntro':
+            msg.action.rDescription = RichTextProcessor.wrapRichText(msg.action.description, {
+              noCommands: true,
+              fromBot: false
+            })
+            break
+        }
+      }
+    $scope.StenaHistoryMessage.push(msg);
+    //$scope.StenaHistoryMessage.push(AppMessagesManager.wrapForHistory(msg.id));
+    console.log('SM',$scope.StenaHistoryMessage);
+
+  } 
+  );
+  $scope.ShowMSg = function () {
+      console.log('SMK',$scope.StenaHistoryMessage);
+  }
+  }
+  )
+  
   .controller('AppImHistoryController', function ($scope, $location, $timeout, $modal, $rootScope, toaster, _, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ApiUpdatesManager, PeersSelectService, IdleManager, StatusManager, NotificationsManager, ErrorService, GeoLocationManager) {
     $scope.$watchCollection('curDialog', applyDialogSelect)
 
     ApiUpdatesManager.attach()
     IdleManager.start()
     StatusManager.start()
-
+    $scope.msghistoryon = true;
     $scope.peerHistories = []
     $scope.selectedMsgs = {}
     $scope.selectedCount = 0
@@ -1270,6 +1395,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     $scope.toggleEdit = toggleEdit
     $scope.toggleMedia = toggleMedia
     $scope.returnToRecent = returnToRecent
+
+    $scope.$on('history_on', function (e) { $scope.msghistoryon = true;} );
+    $scope.$on('history_off', function (e) { $scope.msghistoryon = false; } );
+
+
 
     $scope.$on('history_edit_toggle', toggleEdit)
     $scope.$on('history_edit_flush', selectedFlush)
@@ -1571,6 +1701,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     }
 
     function loadHistory (forceRecent) {
+
+      if(peerID == 778000)
+      {
+        return
+      }
       $scope.historyState.missedCount = 0
 
       hasMore = false
