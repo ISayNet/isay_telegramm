@@ -1,5 +1,5 @@
 /*!
- * Webogram v0.7 - messaging web application for MTProto
+ * Webogram v0.7.0 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
@@ -802,17 +802,17 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
 
     function wrapParticipants(id, participants) {
       var chat = getChat(id)
+      var myID = AppUsersManager.getSelf().id
       if (isChannel(id)) {
         var isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator
         angular.forEach(participants, function (participant) {
-          participant.canLeave = participant._ == 'channelParticipantSelf'
+          participant.canLeave = myID == participant.user_id
           participant.canKick = isAdmin && participant._ == 'channelParticipant'
 
           // just for order by last seen
           participant.user = AppUsersManager.getUser(participant.user_id)
         })
       } else {
-        var myID = AppUsersManager.getSelf().id
         var isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin
         angular.forEach(participants, function (participant) {
           participant.canLeave = myID == participant.user_id
@@ -1019,6 +1019,17 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
         : AppChatsManager.getChatPhoto(-peerID)
     }
 
+    function getPeerMigratedTo(peerID) {
+      if (peerID >= 0) {
+        return false
+      }
+      var chat = AppChatsManager.getChat(-peerID)
+      if (chat && chat.migrated_to && chat.pFlags.deactivated) {
+        return getPeerID(chat.migrated_to)
+      }
+      return false
+    }
+
     function isChannel (peerID) {
       return (peerID < 0) && AppChatsManager.isChannel(-peerID)
     }
@@ -1048,6 +1059,7 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
       getPeerID: getPeerID,
       getPeer: getPeer,
       getPeerPhoto: getPeerPhoto,
+      getPeerMigratedTo: getPeerMigratedTo,
       resolveUsername: resolveUsername,
       isChannel: isChannel,
       isAnyGroup: isAnyGroup,
@@ -1340,6 +1352,17 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
       })
     }
 
+    function invalidateChannelParticipants(id) {
+      delete chatsFull[id]
+      delete chatFullPromises[id]
+      angular.forEach(chatParticipantsPromises, function (val, key) {
+        if (key.split('_')[0] == id) {
+          delete chatParticipantsPromises[key]
+        }
+      })
+      $rootScope.$broadcast('chat_full_update', id)
+    }
+
     function getChannelPinnedMessage(id) {
       return getChannelFull(id).then(function (fullChannel) {
         var pinnedMessageID = fullChannel && fullChannel.pinned_msg_id
@@ -1451,6 +1474,7 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
       getChatFull: getChatFull,
       getChannelFull: getChannelFull,
       getChannelParticipants: getChannelParticipants,
+      invalidateChannelParticipants: invalidateChannelParticipants,
       getChannelPinnedMessage: getChannelPinnedMessage,
       hideChannelPinnedMessage: hideChannelPinnedMessage
     }
@@ -3386,6 +3410,8 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
           $rootScope.$broadcast('stateSynchronized')
           updatesState.syncLoading = false
         }
+      }, function () {
+        updatesState.syncLoading = false
       })
     }
 
@@ -3405,7 +3431,7 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
         filter: {_: 'channelMessagesFilterEmpty'},
         pts: channelState.pts,
         limit: 30
-      }).then(function (differenceResult) {
+      }, {timeout: 0x7fffffff}).then(function (differenceResult) {
         // console.log(dT(), 'channel diff result', differenceResult)
         channelState.pts = differenceResult.pts
 
@@ -3453,6 +3479,8 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
           $rootScope.$broadcast('stateSynchronized')
           channelState.syncLoading = false
         }
+      }, function () {
+        channelState.syncLoading = false
       })
     }
 
@@ -4076,6 +4104,14 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
 
       if ('Notification' in window) {
         try {
+          if (data.tag) {
+            angular.forEach(notificationsShown, function (notification) {
+              if (notification &&
+                  notification.tag == data.tag) {
+                notification.hidden = true
+              }
+            })
+          }
           notification = new Notification(data.title, {
             icon: data.image || '',
             body: data.message || '',
@@ -4153,6 +4189,7 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
         }
         try {
           if (notification.close) {
+            notification.hidden = true
             notification.close()
           }
           else if (notificationsMsSiteMode &&
@@ -4764,6 +4801,9 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
           if (url.search('https://telegram.me/') === 0 ||
               url.search('https://t.me/') === 0) {
             target = '_self'
+          }
+          else if (!url.match(/^https?:\/\//)) {
+            url = 'http://' + url
           }
           var popup = window.open(url, target)
           try {
