@@ -661,10 +661,10 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     }
 
     $scope.showPeerInfo = function () {
-      if ($scope.curDialog.peerID = 778000) {
+      if ($scope.curDialog.peerID == 778000) {
         
       }
-      if ($scope.curDialog.peerID > 0) {
+      else if ($scope.curDialog.peerID > 0) {
         AppUsersManager.openUser($scope.curDialog.peerID)
       } else if ($scope.curDialog.peerID < 0) {
         AppChatsManager.openChat(-$scope.curDialog.peerID)

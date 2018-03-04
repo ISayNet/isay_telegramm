@@ -3835,7 +3835,7 @@ angular.module('myApp.directives', ['myApp.filters'])
           element[0].className = element[0].className.replace(/user_color_\d+/g, '')
         }
           if(peerID == 778000) {
-            element.html( 'Стена: <i class="icon-verified"></i>');
+            element.html( 'Стена <i class="icon-verified"></i>');
           }
           else if (peerID > 0) {
           var user = AppUsersManager.getUser(peerID)
