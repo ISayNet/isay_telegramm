@@ -1304,7 +1304,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             break
 
           case 'messageMediaContact':
-            mmsg.media.rFullName = RichTextProcessor.wrapRichText(
+              msg.media.rFullName = RichTextProcessor.wrapRichText(
               msg.media.first_name + ' ' + (msg.media.last_name || ''),
               {noLinks: true, noLinebreaks: true}
             )

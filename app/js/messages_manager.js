@@ -3242,7 +3242,7 @@ angular.module('myApp.services')
           console.log('message', message , peerID);
           
           //if(message.internal != 1) ISayNewHistory(message);
-          $rootScope.$broadcast('history_stena_newmsg', message);
+          
 
           if (!foundDialog.length) {
             newDialogsToHandle[peerID] = {reload: true}
@@ -3265,7 +3265,8 @@ angular.module('myApp.services')
 
           saveMessages([message], {isNew: true})
           // console.warn(dT(), 'message unread', message.mid, message.pFlags.unread)
-
+          $rootScope.$broadcast('history_stena_newmsg', message);
+          
           if (historyStorage === undefined) {
            historyStorage = historiesStorage[peerID] = {
               count: null,
