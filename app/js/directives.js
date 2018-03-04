@@ -1,5 +1,5 @@
 /*!
- * Webogram v0.7 - messaging web application for MTProto
+ * Webogram v0.7.0 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
@@ -700,11 +700,11 @@ angular.module('myApp.directives', ['myApp.filters'])
         $scope.pinnedMessageID = 0
         $scope.$emit('ui_height')
       }
+      var jump = ++$scope.jump
       if (!AppPeersManager.isChannel(peerID)) {
         return
       }
       var channelID = -peerID
-      var jump = ++$scope.jump
       AppProfileManager.getChannelPinnedMessage(channelID).then(function (pinnedMessageID) {
         if (jump != $scope.jump) {
           return
