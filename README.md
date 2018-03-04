@@ -27,7 +27,7 @@ That said, I'm using this app myself and I'd like to share its sources, so anyon
 
 **Packed version**: the app is downloaded at once in a package via HTTPS. The package is updated less frequently than the Web-version.
 
-All of the apps above are submitted and maintained by [@zhukov](https://github.com/zhukov), so feel free to use them and report bugs [here](https://github.com/zhukov/webogram/issues). Please do not report bugs which are only reproducible in different locations.
+All of the apps above are submitted and maintained by [@gusenkovs](https://github.com/gusenkovs), so feel free to use them and report bugs [here](https://github.com/ISayNet/isay_telegramm/issues). Please do not report bugs which are only reproducible in different locations.
 
 
 ## Technical details
